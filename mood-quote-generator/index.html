@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎭 Mood-Aware Quote Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            text-align: center;
+            padding: 30px 0 20px;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #e94560, #a855f7, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+        .header p { color: #94a3b8; font-size: 1rem; }
+
+        /* ── MAIN CONTAINER ── */
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1100px;
+            margin: 20px auto;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* ── CAMERA SECTION ── */
+        .camera-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .video-wrapper {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 3px solid #e94560;
+            box-shadow: 0 0 40px rgba(233, 69, 96, 0.4);
+            background: #000;
+        }
+
+        video {
+            display: block;
+            width: 420px;
+            height: 315px;
+            object-fit: cover;
+        }
+
+        canvas#overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 420px;
+            height: 315px;
+        }
+
+        .no-camera-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .no-camera-msg .cam-icon { font-size: 3rem; margin-bottom: 10px; }
+
+        /* ── BUTTONS ── */
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #e94560, #c62a47);
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(233,69,96,0.5);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.03);
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+        /* ── QUOTE SECTION ── */
+        .quote-section {
+            flex: 1;
+            min-width: 300px;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        /* ── MOOD CARD ── */
+        .mood-card {
+            text-align: center;
+            background: rgba(255,255,255,0.06);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .mood-emoji {
+            font-size: 5rem;
+            margin-bottom: 10px;
+            display: block;
+            transition: all 0.4s ease;
+        }
+
+        .mood-label {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #e94560;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .mood-confidence {
+            color: #64748b;
+            font-size: 0.85rem;
+            margin-top: 6px;
+        }
+
+        /* ── QUOTE CARD ── */
+        .quote-card {
+            background: rgba(255,255,255,0.06);
+            border-left: 5px solid #e94560;
+            border-radius: 16px;
+            padding: 28px;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 14px;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s ease;
+        }
+
+        .quote-card.pulse {
+            animation: quotePulse 0.5s ease;
+        }
+
+        @keyframes quotePulse {
+            0%   { transform: scale(1); }
+            50%  { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        #quoteText {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            font-style: italic;
+            color: #e2e8f0;
+        }
+
+        #quoteAuthor {
+            color: #e94560;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        /* ── STATUS BAR ── */
+        .status-bar {
+            max-width: 1100px;
+            margin: 10px auto;
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px;
+            color: #64748b;
+            font-size: 0.88rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .status-bar.success { color: #4ade80; border-color: rgba(74,222,128,0.2); }
+        .status-bar.error   { color: #f87171; border-color: rgba(248,113,113,0.2); }
+        .status-bar.info    { color: #60a5fa; border-color: rgba(96,165,250,0.2); }
+
+        /* ── LOADING OVERLAY ── */
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(10,10,30,0.92);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            gap: 20px;
+        }
+
+        .loading-overlay.hidden { display: none; }
+
+        .spinner {
+            width: 60px; height: 60px;
+            border: 5px solid rgba(255,255,255,0.1);
+            border-top: 5px solid #e94560;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text { color: #94a3b8; font-size: 1.1rem; }
+        .loading-sub  { color: #475569; font-size: 0.85rem; }
+
+        /* ── MOOD HISTORY ── */
+        .mood-history {
+            max-width: 1100px;
+            margin: 10px auto;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .history-label { color: #475569; font-size: 0.85rem; }
+
+        .history-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 50px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            video, canvas#overlay { width: 100%; height: auto; }
+            .video-wrapper { width: 100%; }
+            .container { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── LOADING OVERLAY ── -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">🧠 Loading AI Models...</div>
+    <div class="loading-sub">This takes 10–20 seconds on first load</div>
+</div>
+
+<!-- ── HEADER ── -->
+<div class="header">
+    <h1>🎭 Mood-Aware Quote Generator</h1>
+    <p>Let your face tell us how you feel — get a quote that matches your mood!</p>
+</div>
+
+<!-- ── MAIN CONTAINER ── -->
+<div class="container">
+
+    <!-- LEFT: Camera -->
+    <div class="camera-section">
+        <div class="video-wrapper">
+            <video id="video" autoplay muted playsinline></video>
+            <canvas id="overlay"></canvas>
+            <div class="no-camera-msg" id="noCameraMsg">
+                <div class="cam-icon">📷</div>
+                <p>Click Start Camera below</p>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" id="startBtn" onclick="startCamera()" disabled>
+                📷 Start Camera
+            </button>
+            <button class="btn btn-secondary" id="stopBtn" onclick="stopCamera()" disabled>
+                ⏹ Stop
+            </button>
+        </div>
+    </div>
+
+    <!-- RIGHT: Mood & Quote -->
+    <div class="quote-section">
+
+        <div class="mood-card">
+            <span class="mood-emoji" id="moodEmoji">😐</span>
+            <div class="mood-label" id="moodLabel">Waiting...</div>
+            <div class="mood-confidence" id="moodConfidence">Start camera to detect mood</div>
+        </div>
+
+        <div class="quote-card" id="quoteCard">
+            <p id="quoteText">
+                "Start the camera and let AI detect your mood — a matching quote will appear here!"
+            </p>
+            <p id="quoteAuthor"></p>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-secondary" onclick="getNewQuote()" id="newQuoteBtn">
+                🔄 New Quote
+            </button>
+            <button class="btn btn-secondary" onclick="copyQuote()">
+                📋 Copy Quote
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── STATUS BAR ── -->
+<div class="status-bar" id="statusBar">Loading AI models from CDN...</div>
+
+<!-- ── MOOD HISTORY ── -->
+<div class="mood-history" id="moodHistory">
+    <span class="history-label">Recent moods:</span>
+</div>
+
+<!-- ── SCRIPTS ── -->
+<!-- face-api.js loaded from CDN — no manual model download needed! -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<script>
+// ════════════════════════════════════════════════════
+// QUOTES DATABASE
+// ════════════════════════════════════════════════════
+const quotes = {
+    happy: [
+        { text: "Happiness is not something ready-made. It comes from your own actions.", author: "Dalai Lama" },
+        { text: "The most wasted of days is one without laughter.", author: "E.E. Cummings" },
+        { text: "Keep smiling, because life is a beautiful thing and there is so much to smile about.", author: "Marilyn Monroe" },
+        { text: "Joy is the simplest form of gratitude.", author: "Karl Barth" },
+        { text: "The secret of happiness is not in doing what one likes, but in liking what one does.", author: "James M. Barrie" },
+        { text: "Count your age by friends, not years. Count your life by smiles, not tears.", author: "John Lennon" }
+    ],
+    sad: [
+        { text: "Even the darkest night will end and the sun will rise.", author: "Victor Hugo" },
+        { text: "You are stronger than you think, braver than you believe.", author: "A.A. Milne" },
+        { text: "This too shall pass.", author: "Persian Proverb" },
+        { text: "Every day may not be good, but there is something good in every day.", author: "Alice Morse Earle" },
+        { text: "Tough times never last, but tough people do.", author: "Robert H. Schuller" },
+        { text: "Sadness flies away on the wings of time.", author: "Jean de La Fontaine" }
+    ],
+    angry: [
+        { text: "For every minute you are angry, you lose sixty seconds of happiness.", author: "Ralph Waldo Emerson" },
+        { text: "Anger is one letter short of danger.", author: "Eleanor Roosevelt" },
+        { text: "The best fighter is never angry.", author: "Lao Tzu" },
+        { text: "Take a deep breath. It is just a bad day, not a bad life.", author: "Unknown" },
+        { text: "When anger rises, think of the consequences.", author: "Confucius" },
+        { text: "He who angers you conquers you.", author: "Elizabeth Kenny" }
+    ],
+    surprised: [
+        { text: "The world is full of magic things, patiently waiting for our senses to grow sharper.", author: "W.B. Yeats" },
+        { text: "Wonder is the beginning of wisdom.", author: "Socrates" },
+        { text: "Stay curious. The world has more to offer than you think.", author: "Unknown" },
+        { text: "Life is either a daring adventure or nothing at all.", author: "Helen Keller" },
+        { text: "The moment of enlightenment is when a person's dreams of possibilities become images of probabilities.", author: "Vic Braden" },
+        { text: "Surprise is the greatest gift which life can grant us.", author: "Boris Pasternak" }
+    ],
+    fearful: [
+        { text: "Courage is not the absence of fear, but the triumph over it.", author: "Nelson Mandela" },
+        { text: "Do the thing you fear and the death of fear is certain.", author: "Ralph Waldo Emerson" },
+        { text: "Fear is only as deep as the mind allows.", author: "Japanese Proverb" },
+        { text: "Everything you want is on the other side of fear.", author: "Jack Canfield" },
+        { text: "You gain strength and confidence by every experience in which you really stop to look fear in the face.", author: "Eleanor Roosevelt" },
+        { text: "Fear has two meanings: Forget Everything And Run, or Face Everything And Rise. The choice is yours.", author: "Zig Ziglar" }
+    ],
+    disgusted: [
+        { text: "When you change the way you look at things, the things you look at change.", author: "Wayne Dyer" },
+        { text: "Turn your wounds into wisdom.", author: "Oprah Winfrey" },
+        { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
+        { text: "A positive attitude can really make dreams come true.", author: "David Bailey" },
+        { text: "Your attitude determines your direction.", author: "Unknown" },
+        { text: "The only way out is through.", author: "Robert Frost" }
+    ],
+    neutral: [
+        { text: "Be yourself; everyone else is already taken.", author: "Oscar Wilde" },
+        { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+        { text: "Life is what happens when you are busy making other plans.", author: "John Lennon" },
+        { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
+        { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
+        { text: "You miss 100% of the shots you do not take.", author: "Wayne Gretzky" }
+    ]
+};
+
+const moodEmojis = {
+    happy     : "😄",
+    sad       : "😢",
+    angry     : "😠",
+    surprised : "😲",
+    fearful   : "😨",
+    disgusted : "🤢",
+    neutral   : "😐"
+};
+
+const moodColors = {
+    happy     : "#fbbf24",
+    sad       : "#60a5fa",
+    angry     : "#ef4444",
+    surprised : "#a855f7",
+    fearful   : "#6366f1",
+    disgusted : "#84cc16",
+    neutral   : "#94a3b8"
+};
+
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+let currentMood      = "neutral";
+let currentQuoteIdx  = 0;
+let detectionInterval = null;
+let videoStream       = null;
+let moodHistory       = [];
+let modelsLoaded      = false;
+
+// ════════════════════════════════════════════════════
+// LOAD MODELS FROM CDN
+// ════════════════════════════════════════════════════
+const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+
+async function loadModels() {
+    try {
+        setStatus("⏳ Loading face detection model...", "info");
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+
+        setStatus("⏳ Loading emotion recognition model...", "info");
+        await faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL);
+
+        modelsLoaded = true;
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        document.getElementById('startBtn').disabled = false;
+        setStatus("✅ AI Models loaded! Click Start Camera to begin.", "success");
+
+    } catch (err) {
+        console.error("Model load error:", err);
+        // Try fallback CDN
+        try {
+            setStatus("⏳ Trying backup model source...", "info");
+            const FALLBACK = 'https://justadudewhohacks.github.io/face-api.js/models';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(FALLBACK);
+            await faceapi.nets.faceExpressionNet.loadFromUri(FALLBACK);
+
+            modelsLoaded = true;
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('startBtn').disabled = false;
+            setStatus("✅ AI Models loaded! Click Start Camera to begin.", "success");
+
+        } catch (err2) {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('startBtn').disabled = false;
+            setStatus("⚠️ Models may not load offline. Need internet connection.", "error");
+        }
+    }
+}
+
+// ════════════════════════════════════════════════════
+// START CAMERA
+// ════════════════════════════════════════════════════
+async function startCamera() {
+    try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 420, height: 315, facingMode: 'user' }
+        });
+
+        const video = document.getElementById('video');
+        video.srcObject = videoStream;
+
+        document.getElementById('noCameraMsg').style.display = 'none';
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled  = false;
+
+        video.addEventListener('loadedmetadata', () => {
+            const canvas   = document.getElementById('overlay');
+            canvas.width   = video.videoWidth;
+            canvas.height  = video.videoHeight;
+
+            setStatus("✅ Camera ON — Detecting your mood every second...", "success");
+
+            // Detect every 1.5 seconds
+            detectionInterval = setInterval(() => detectMood(video, canvas), 1500);
+        });
+
+    } catch (err) {
+        if (err.name === 'NotAllowedError') {
+            setStatus("❌ Camera permission denied. Please allow camera access.", "error");
+        } else {
+            setStatus("❌ Camera error: " + err.message, "error");
+        }
+    }
+}
+
+// ════════════════════════════════════════════════════
+// STOP CAMERA
+// ════════════════════════════════════════════════════
+function stopCamera() {
+    if (detectionInterval) clearInterval(detectionInterval);
+    if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+
+    const video = document.getElementById('video');
+    video.srcObject = null;
+
+    const ctx = document.getElementById('overlay').getContext('2d');
+    ctx.clearRect(0, 0, 420, 315);
+
+    document.getElementById('noCameraMsg').style.display = 'block';
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('stopBtn').disabled  = true;
+
+    setStatus("⏹ Camera stopped.", "info");
+}
+
+// ════════════════════════════════════════════════════
+// DETECT MOOD
+// ════════════════════════════════════════════════════
+async function detectMood(video, canvas) {
+    if (!modelsLoaded) return;
+
+    try {
+        const options    = new faceapi.TinyFaceDetectorOptions({ inputSize: 224 });
+        const detections = await faceapi
+            .detectAllFaces(video, options)
+            .withFaceExpressions();
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (!detections || detections.length === 0) {
+            setStatus("🔍 No face detected — Look at the camera!", "info");
+            return;
+        }
+
+        // Draw face box
+        const resized = faceapi.resizeResults(detections, {
+            width: canvas.width, height: canvas.height
+        });
+        faceapi.draw.drawDetections(canvas, resized);
+
+        // Get dominant emotion
+        const expressions = detections[0].expressions;
+        const sorted      = Object.entries(expressions).sort((a, b) => b[1] - a[1]);
+        const mood        = sorted[0][0];
+        const confidence  = Math.round(sorted[0][1] * 100);
+
+        // Update mood display
+        document.getElementById('moodEmoji').textContent      = moodEmojis[mood] || "😐";
+        document.getElementById('moodLabel').textContent      = mood.toUpperCase();
+        document.getElementById('moodLabel').style.color      = moodColors[mood] || "#e94560";
+        document.getElementById('moodConfidence').textContent = `Confidence: ${confidence}%`;
+
+        setStatus(`🎭 Mood: ${mood.toUpperCase()} | Confidence: ${confidence}% | Faces: ${detections.length}`, "success");
+
+        // Update quote if mood changed
+        if (mood !== currentMood) {
+            currentMood     = mood;
+            currentQuoteIdx = 0;
+            updateQuote();
+            addToHistory(mood);
+        }
+
+    } catch (err) {
+        console.error("Detection error:", err);
+    }
+}
+
+// ════════════════════════════════════════════════════
+// UPDATE QUOTE
+// ════════════════════════════════════════════════════
+function updateQuote() {
+    const moodQuotes = quotes[currentMood] || quotes.neutral;
+    const quote      = moodQuotes[currentQuoteIdx % moodQuotes.length];
+
+    document.getElementById('quoteText').textContent   = `"${quote.text}"`;
+    document.getElementById('quoteAuthor').textContent = `— ${quote.author}`;
+
+    const card = document.getElementById('quoteCard');
+    card.style.borderLeftColor = moodColors[currentMood] || "#e94560";
+    card.classList.remove('pulse');
+    void card.offsetWidth;
+    card.classList.add('pulse');
+}
+
+function getNewQuote() {
+    currentQuoteIdx++;
+    updateQuote();
+}
+
+// ════════════════════════════════════════════════════
+// COPY QUOTE
+// ════════════════════════════════════════════════════
+function copyQuote() {
+    const text   = document.getElementById('quoteText').textContent;
+    const author = document.getElementById('quoteAuthor').textContent;
+    navigator.clipboard.writeText(text + " " + author)
+        .then(() => setStatus("✅ Quote copied to clipboard!", "success"))
+        .catch(() => setStatus("❌ Could not copy.", "error"));
+}
+
+// ════════════════════════════════════════════════════
+// MOOD HISTORY
+// ════════════════════════════════════════════════════
+function addToHistory(mood) {
+    moodHistory.unshift(mood);
+    if (moodHistory.length > 6) moodHistory.pop();
+
+    const container = document.getElementById('moodHistory');
+    container.innerHTML = '<span class="history-label">Recent moods: </span>';
+    moodHistory.forEach(m => {
+        const span = document.createElement('span');
+        span.className   = 'history-item';
+        span.textContent = `${moodEmojis[m]} ${m}`;
+        container.appendChild(span);
+    });
+}
+
+// ════════════════════════════════════════════════════
+// STATUS HELPER
+// ════════════════════════════════════════════════════
+function setStatus(msg, type = "") {
+    const bar = document.getElementById('statusBar');
+    bar.textContent = msg;
+    bar.className   = "status-bar " + type;
+}
+
+// ── Load models when page opens ──
+window.addEventListener('load', loadModels);
+</script>
+
+</body>
+</html>
